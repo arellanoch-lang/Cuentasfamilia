@@ -369,6 +369,30 @@
   }
 
   /* Dashboard */
+  .gauge-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:20px;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+  }
+  .gauge-info{
+    display:flex;
+    flex-direction:column;
+  }
+  .gauge-info-amount{
+    font-family:'Fraunces',serif;
+    font-size:1.6rem;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .gauge-info-amount.neg{color:var(--rust);}
+  .gauge-info-label{
+    font-size:0.82rem;
+    color:var(--sage);
+    margin-top:2px;
+  }
   .dash-summary{
     display:grid;
     grid-template-columns:repeat(2,1fr);
@@ -487,6 +511,32 @@
     margin-top:16px;
     padding-top:12px;
     border-top:1px solid var(--line);
+  }
+  .fixed-columns{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+  }
+  .fixed-col-title{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:1rem;
+    margin-bottom:8px;
+    padding-bottom:6px;
+    border-bottom:2px solid var(--ink);
+  }
+  .fixed-col-total{
+    display:flex;
+    justify-content:space-between;
+    font-weight:700;
+    margin-top:8px;
+    padding-top:8px;
+    border-top:1px solid var(--line);
+  }
+  .fixed-col-pct{
+    font-size:0.78rem;
+    color:var(--sage);
+    margin-top:2px;
   }
   .fixed-item{
     display:flex;
@@ -637,35 +687,34 @@ const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 const docRef = doc(db, "cuentasCasa", "data");
 
-const CATEGORIES = ["Vivienda","Alimentación","Transporte","Ocio","Salud","Ropa","Niñas","Inversión","Viajes","Educación","Otros"];
+const CATEGORIES = ["Alimentación","Coche","Inversión/Ahorro","Niñas","Ocios","Otros","Ropa","Salidas","Salud","Vivienda"];
 
 const CATEGORY_COLORS = {
-  "Vivienda": "#B8A9DE",
   "Alimentación": "#A8D8C9",
-  "Transporte": "#A9CCE3",
-  "Ocio": "#F6B8C2",
-  "Salud": "#F2B79B",
-  "Ropa": "#F5C6E0",
+  "Coche": "#A9CCE3",
+  "Inversión/Ahorro": "#C9E4B5",
   "Niñas": "#FFD9A0",
-  "Inversión": "#C9E4B5",
-  "Viajes": "#8FBFE0",
-  "Educación": "#F4D8A8",
-  "Otros": "#D9D3E0"
+  "Ocios": "#F6B8C2",
+  "Otros": "#D9D3E0",
+  "Ropa": "#F5C6E0",
+  "Salidas": "#8FBFE0",
+  "Salud": "#F2B79B",
+  "Vivienda": "#B8A9DE"
 };
 function categoryColor(cat){ return CATEGORY_COLORS[cat] || "#D9D3E0"; }
 
 const CATEGORY_KEYWORDS = {
   "Vivienda": ["alquiler","hipoteca","comunidad de propietarios","endesa","iberdrola","naturgy","factura luz","factura agua","gas natural"],
   "Alimentación": ["mercadona","carrefour","lidl","dia %","alcampo","eroski","supermercado","frutas","panaderia"],
-  "Transporte": ["gasolina","repsol","cepsa","uber","cabify","renfe","parking","peaje","taxi","itv"],
-  "Ocio": ["netflix","spotify","hbo","disney plus","cine","restaurante","bar "],
+  "Coche": ["gasolina","repsol","cepsa","parking","peaje","itv","taller","seguro coche"],
+  "Ocios": ["netflix","spotify","hbo","disney plus"],
   "Salud": ["farmacia","clinica","dentista","seguro medico","hospital","fisioterapia"],
   "Ropa": ["zara","mango","h&m","primark","el corte ingles","calzado"],
   "Niñas": ["colegio","guarderia","ludoteca","pediatra","juguetes","toysrus","extraescolar","material escolar"],
-  "Inversión": ["indexa","myinvestor","broker","etf","fondo de inversion","inversis","degiro","trade republic"],
-  "Viajes": ["booking.com","airbnb","vuelo","iberia","ryanair","easyjet","vueling","aeropuerto","hotel","viaje","renfe ave","alquiler coche"],
-  "Educación": ["academia","universidad","curso online","libros de texto"]
+  "Inversión/Ahorro": ["indexa","myinvestor","broker","etf","fondo de inversion","inversis","degiro","trade republic"],
+  "Salidas": ["cine","restaurante","bar ","uber","cabify","taxi","booking.com","airbnb","vuelo","iberia","ryanair","easyjet","vueling","aeropuerto","hotel","viaje"]
 };
+
 
 function normalizeText(s){
   return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -1054,12 +1103,39 @@ async function deleteFixedExpense(id){
   render();
 }
 
+function buildGaugeSVG(pct){
+  const size=170, r=68, cx=size/2, cy=size/2, sw=14;
+  const c = 2*Math.PI*r;
+  const clamped = Math.max(0, Math.min(1, pct));
+  const dash = c*clamped;
+  const color = clamped>=0.9 ? 'var(--rust)' : 'var(--gold)';
+  return `
+    <svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--line)" stroke-width="${sw}"/>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}"
+        stroke-dasharray="${dash.toFixed(1)} ${c.toFixed(1)}" stroke-linecap="round"
+        transform="rotate(-90 ${cx} ${cy})"/>
+      <text x="${cx}" y="${cy-2}" text-anchor="middle" font-family="Fraunces, serif" font-size="28" font-weight="600" fill="var(--ink)">${(clamped*100).toFixed(0)}%</text>
+      <text x="${cx}" y="${cy+18}" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="var(--sage)">gastado</text>
+    </svg>
+  `;
+}
+
 function renderDashboard(filter='all'){
   const t = monthTotals(currentMonth, filter);
   const months = lastMonths(6);
   const trend = months.map(m=>monthTotals(m, filter));
   const maxAbs = Math.max(1, ...trend.map(x=>Math.abs(x.ahorro)));
+  const spent = t.variable + t.fixed;
+  const pct = t.income>0 ? spent/t.income : (spent>0 ? 1 : 0);
   return `
+    <div class="gauge-row">
+      ${buildGaugeSVG(pct)}
+      <div class="gauge-info">
+        <span class="gauge-info-amount ${t.ahorro<0?'neg':''}">${fmt(t.ahorro)}</span>
+        <span class="gauge-info-label">${t.ahorro>=0 ? `te queda de ${monthLabel(currentMonth)}` : 'por encima de tus ingresos'}</span>
+      </div>
+    </div>
     <div class="dash-summary">
       <div class="dash-card">
         <span class="dash-amount">${fmt(t.income)}</span>
@@ -1101,6 +1177,35 @@ function renderFixedPanel(){
   const income = totalIncome();
   const fixed = totalFixed();
   const ahorro = income - fixed;
+
+  const col0 = state.fixedExpenses.filter(f=>f.person===state.people[0]);
+  const col1 = state.fixedExpenses.filter(f=>f.person===state.people[1]);
+  const total0 = col0.reduce((s,f)=>s+f.amount,0);
+  const total1 = col1.reduce((s,f)=>s+f.amount,0);
+  const pct0 = state.income[0]>0 ? (total0/state.income[0]*100) : 0;
+  const pct1 = state.income[1]>0 ? (total1/state.income[1]*100) : 0;
+
+  const renderCol = (list, name, total, pct) => `
+    <div class="fixed-col">
+      <div class="fixed-col-title">${name}</div>
+      ${list.length ? list.map(f=>`
+        <div class="fixed-item">
+          <span class="cat-dot" style="background:${categoryColor(f.category)}"></span>
+          <div class="fixed-item-info">
+            <div class="fixed-item-name">${f.name}</div>
+            <div class="fixed-item-meta">${f.category}</div>
+          </div>
+          <div class="fixed-item-amount">${fmt(f.amount)}</div>
+          <button class="del-btn" data-delfixed="${f.id}">Borrar</button>
+        </div>
+      `).join('') : '<p class="empty">Sin gastos fijos.</p>'}
+      <div class="fixed-col-total">
+        <span>Total</span><span>${fmt(total)}</span>
+      </div>
+      <div class="fixed-col-pct">${pct.toFixed(1)}% de sus ingresos</div>
+    </div>
+  `;
+
   return `
     <div class="fixed-box">
       <div class="income-row">
@@ -1138,17 +1243,10 @@ function renderFixedPanel(){
         <button type="button" class="import-confirm-btn" id="addFixedBtn">Añadir gasto fijo</button>
       </div>
       <div class="fixed-list">
-        ${state.fixedExpenses.length ? state.fixedExpenses.map(f=>`
-          <div class="fixed-item">
-            <span class="cat-dot" style="background:${categoryColor(f.category)}"></span>
-            <div class="fixed-item-info">
-              <div class="fixed-item-name">${f.name}</div>
-              <div class="fixed-item-meta">${f.category} · ${f.person}</div>
-            </div>
-            <div class="fixed-item-amount">${fmt(f.amount)}</div>
-            <button class="del-btn" data-delfixed="${f.id}">Borrar</button>
-          </div>
-        `).join('') : '<p class="empty">Sin gastos fijos añadidos todavía.</p>'}
+        <div class="fixed-columns">
+          ${renderCol(col0, state.people[0], total0, pct0)}
+          ${renderCol(col1, state.people[1], total1, pct1)}
+        </div>
       </div>
     </div>
   `;
